@@ -1,15 +1,43 @@
 import streamlit as st
 import pandas as pd
 import pickle
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
 
-with open('best_model.pkl','rb') as fp:
-    model = pickle.load(fp)
+with open('rf_forest_model.pkl', 'rb') as f:
+    model = pickle.load(f)
 
-with open('features_list.pkl','rb') as fp:
-    selected_features = pickle.load(fp)
+with open("scaler.pkl", "rb") as f:
+    scaler = pickle.load(f)
+
 
 st.title("Forest Cover Type Prediction 🌲")
 st.write("Enter the forest features below:")
+
+
+df=pd.read_csv("c:/Users/varsh/Downloads/sampled_data.csv")
+X = df.drop("Cover_Type", axis=1)
+y = df["Cover_Type"].astype(int)
+y = y - y.min()   
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+rf = RandomForestClassifier(
+    n_estimators=200,     
+    max_depth=None,       
+    random_state=42,
+    class_weight="balanced"   
+)
+
+rf.fit(X_train, y_train)
+y_pred = rf.predict(X_test)
 
 Elevation = st.number_input("Elevation", min_value=0, max_value=5000, value=2785)
 Aspect = st.number_input("Aspect", min_value=0, max_value=360, value=155)
@@ -43,7 +71,8 @@ Soil_Type38 = st.number_input("Soil Type 38",value=1)
 Soil_Type39 = st.number_input("Soil Type 39",value=1)  
 
 
-sample_data = {col: [0] for col in selected_features}
+feature_names = model.feature_names_in_
+sample_data = {col: [0] for col in feature_names}
 
 sample_data.update({
     'Elevation': [Elevation],
@@ -78,12 +107,19 @@ sample_data.update({
     'Soil_Type39': [Soil_Type39]
 })
 
-sample_df = pd.DataFrame(sample_data)[selected_features]
+sample_df = pd.DataFrame(sample_data)[feature_names]
 
 if st.button("Predict"):
+    model=rf.fit(X_train, y_train)
+
     prediction = model.predict(sample_df)[0]
     proba = model.predict_proba(sample_df)[0]
 
     st.success(f"Predicted Forest Cover Type (0-6): {prediction}")
     st.write("Prediction Probabilities per class:")
     st.write(proba)
+
+  
+
+
+
